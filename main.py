@@ -3,7 +3,7 @@ from data_processing import process_avro
 from embeddings import generate_article_embeddings
 from vector_database import create_collection, insert_vectors
 
-AVRO_FILE = "/Users/pateltayyab/Downloads/news_data100.avro"
+AVRO_FILE = "/Users/pateltayyab/Downloads/news_data5000.avro"
 
 # Ensure Qdrant collection exists
 create_collection()
