@@ -20,7 +20,7 @@ def load_avro_to_dataframe(avro_file_path):
             records = [record for record in reader]
         df = pd.DataFrame(records)
     except Exception as e:
-        print(f"Error loading AVRO file: {e}")
+        print(f"❌ Error loading AVRO file: {e}")
         return None
 
     return df
@@ -41,7 +41,7 @@ def preprocess_dataframe(df):
         pd.DataFrame: Preprocessed DataFrame.
     """
     if df is None:
-        print("Error: DataFrame is None. Ensure AVRO file is loaded correctly.")
+        print("❌ Error: DataFrame is None. Ensure AVRO file is loaded correctly.")
         return None
 
     df.fillna(value=np.nan, inplace=True)  # Replace nulls with NaN
@@ -61,4 +61,20 @@ def preprocess_dataframe(df):
         df["content_text"] = df["snippet"].fillna("") + " " + df["body"].fillna("")
         df.drop(columns=["snippet", "body"], inplace=True)  # Drop original columns
 
+    return df
+
+# Full processing pipeline
+def process_avro(avro_file_path):
+    """
+    Loads, preprocesses, and returns a DataFrame from an AVRO file.
+
+    Args:
+        avro_file_path (str): Path to the AVRO file.
+
+    Returns:
+        pd.DataFrame: Processed DataFrame.
+    """
+    df = load_avro_to_dataframe(avro_file_path)
+    if df is not None:
+        df = preprocess_dataframe(df)
     return df
