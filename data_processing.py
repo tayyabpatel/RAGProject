@@ -2,7 +2,6 @@ import fastavro
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from embeddings import generate_article_embeddings  # Import embeddings module
 
 # Load AVRO file and convert to Pandas DataFrame
 def load_avro_to_dataframe(avro_file_path):
@@ -15,11 +14,14 @@ def load_avro_to_dataframe(avro_file_path):
     Returns:
         pd.DataFrame: DataFrame containing the data.
     """
-    with open(avro_file_path, "rb") as f:
-        reader = fastavro.reader(f)
-        records = [record for record in reader]
-
-    df = pd.DataFrame(records)
+    try:
+        with open(avro_file_path, "rb") as f:
+            reader = fastavro.reader(f)
+            records = [record for record in reader]
+        df = pd.DataFrame(records)
+    except Exception as e:
+        print(f"Error loading AVRO file: {e}")
+        return None
 
     return df
 
@@ -38,6 +40,10 @@ def preprocess_dataframe(df):
     Returns:
         pd.DataFrame: Preprocessed DataFrame.
     """
+    if df is None:
+        print("Error: DataFrame is None. Ensure AVRO file is loaded correctly.")
+        return None
+
     df.fillna(value=np.nan, inplace=True)  # Replace nulls with NaN
 
     # Convert long timestamps to datetime
@@ -55,23 +61,4 @@ def preprocess_dataframe(df):
         df["content_text"] = df["snippet"].fillna("") + " " + df["body"].fillna("")
         df.drop(columns=["snippet", "body"], inplace=True)  # Drop original columns
 
-    return df
-
-# Main function to process AVRO and return DataFrame
-def process_avro(avro_file_path):
-    """
-    Processes an AVRO file and returns a DataFrame with embeddings.
-
-    Args:
-        avro_file_path (str): Path to the AVRO file.
-
-    Returns:
-        pd.DataFrame: Final processed DataFrame with embeddings.
-    """
-    df = load_avro_to_dataframe(avro_file_path)
-    df = preprocess_dataframe(df)
-    
-    # Uncomment below to generate embeddings once embeddings.py is fully implemented
-    df = generate_article_embeddings(df)  
-    
     return df

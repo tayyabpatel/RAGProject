@@ -1,80 +1,94 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import PointStruct, Distance, VectorParams
 import numpy as np
-import pandas as pd
 import uuid
-import os
 
-# Qdrant connection settings
-QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")  # Change if using Qdrant Cloud
+# Define Qdrant collection name
 COLLECTION_NAME = "news_articles"
 
-client = QdrantClient(QDRANT_URL)
-
-# Create collection schema (if not exists)
-def create_collection(vector_size=768):
+def connect_qdrant():
     """
-    Creates a Qdrant collection for storing embeddings if it does not already exist.
-    """
-    existing_collections = client.get_collections().collections
-    if COLLECTION_NAME not in [col.name for col in existing_collections]:
-        client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
-        )
-        print(f"✅ Collection '{COLLECTION_NAME}' created successfully.")
-    else:
-        print(f"✅ Collection '{COLLECTION_NAME}' already exists.")
-
-# Insert data into Qdrant
-def insert_embeddings(df):
-    """
-    Inserts articles with their embeddings into Qdrant.
+    Establishes a connection to the Qdrant vector database.
     
-    Args:
-        df (pd.DataFrame): DataFrame containing 'embedding' and metadata fields.
+    Returns:
+        QdrantClient: Connected Qdrant client instance.
     """
-    points = []
-    for _, row in df.iterrows():
-        if isinstance(row["embedding"], list):  # Ensure embedding is valid
-            points.append(
-                PointStruct(
-                    id=str(uuid.uuid4()),  # Unique ID
-                    vector=row["embedding"],  # Embedding vector
-                    payload={  # Metadata
-                        "title": row.get("title", ""),
-                        "date": row.get("publication_datetime", ""),
-                        "content": row.get("content_text", ""),
-                    },
-                )
+    return QdrantClient("localhost", port=6333)
+
+def create_collection(client, collection_name=COLLECTION_NAME):
+    """
+    Creates a Qdrant collection if it doesn't exist.
+
+    Args:
+        client (QdrantClient): Qdrant client instance.
+        collection_name (str): Name of the collection.
+    """
+    try:
+        client.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=768, distance=Distance.COSINE),
+        )
+        print(f"Collection '{collection_name}' created successfully.")
+    except Exception as e:
+        print(f"Error creating collection: {e}")
+
+def insert_embeddings(client, collection_name, df):
+    """
+    Inserts article embeddings into Qdrant.
+
+    Args:
+        client (QdrantClient): Qdrant client instance.
+        collection_name (str): Name of the collection.
+        df (pd.DataFrame): DataFrame containing 'embedding' column and metadata.
+    """
+    if df is None or "embedding" not in df.columns:
+        print("Error: DataFrame is None or missing 'embedding' column.")
+        return
+    
+    try:
+        points = [
+            PointStruct(
+                id=str(uuid.uuid4()),  # Generate unique ID for each vector
+                vector=vec.tolist() if isinstance(vec, np.ndarray) else vec,  # Ensure vector is list format
+                payload={
+                    "title": df.iloc[i].get("title", "No Title"),
+                    "publication_date": str(df.iloc[i].get("publication_date", "Unknown")),
+                    "source": df.iloc[i].get("source_name", "Unknown"),
+                    "content": df.iloc[i].get("content_text", "No Content"),
+                }
             )
+            for i, vec in enumerate(df["embedding"])
+        ]
 
-    if points:
-        client.upsert(collection_name=COLLECTION_NAME, points=points)
-        print(f"✅ Inserted {len(points)} articles into Qdrant.")
-    else:
-        print("⚠️ No valid embeddings found in DataFrame.")
+        client.upsert(
+            collection_name=collection_name,
+            points=points
+        )
+        print(f"Inserted {len(points)} embeddings into '{collection_name}'")
+    except Exception as e:
+        print(f"Error inserting embeddings: {e}")
 
-# Search function using cosine similarity
-def search_articles(query_embedding, top_k=5):
+def search_vectors(client, collection_name, query_vector, top_k=5):
     """
-    Searches for the most relevant articles using cosine similarity.
+    Searches for similar articles using the query embedding.
 
     Args:
-        query_embedding (list): The embedding vector of the search query.
-        top_k (int): Number of results to return.
+        client (QdrantClient): Qdrant client instance.
+        collection_name (str): Name of the collection.
+        query_vector (list): The query embedding vector.
+        top_k (int): Number of results to retrieve.
 
     Returns:
-        list: Top-k matching articles with metadata.
+        list: Retrieved documents with similarity scores.
     """
-    search_results = client.search(
-        collection_name=COLLECTION_NAME,
-        query_vector=query_embedding,
-        limit=top_k,
-    )
-
-    return [
-        {"title": hit.payload["title"], "content": hit.payload["content"], "score": hit.score}
-        for hit in search_results
-    ]
-
+    try:
+        results = client.search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            limit=top_k,
+            query_filter=None  # Allow searching the whole dataset
+        )
+        return results
+    except Exception as e:
+        print(f"Error searching vectors: {e}")
+        return None

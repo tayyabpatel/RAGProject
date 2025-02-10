@@ -1,7 +1,8 @@
 import pandas as pd
 from data_processing import load_avro_to_dataframe, preprocess_dataframe
 from embeddings import generate_article_embeddings, generate_query_embedding
-from vector_database import create_collection, insert_embeddings, search_articles
+from vector_database import create_collection, insert_embeddings, search_vectors
+
 
 # Path to your AVRO data file
 AVRO_FILE_PATH = "/Users/pateltayyab/Downloads/news_data.avro"
