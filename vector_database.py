@@ -34,7 +34,11 @@ def insert_vectors(df):
     
     try:
         points = [
-            PointStruct(id=i, vector=vec, payload={"title": df.iloc[i]["title"]})
+            PointStruct(
+                id=i, 
+                vector=vec, 
+                payload={"an": df.iloc[i]["an"], "content_text": df.iloc[i]["content_text"]}
+            )
             for i, vec in enumerate(df["embedding"])
         ]
 
@@ -58,7 +62,8 @@ def search_vectors(query_vector, top_k=5):
         results = client.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
-            limit=top_k
+            limit=top_k,
+            with_payload=True  # Ensure metadata (title, an, content) is returned
         )
         return results
     except Exception as e:

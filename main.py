@@ -2,8 +2,11 @@ import os
 from data_processing import process_avro
 from embeddings import generate_article_embeddings
 from vector_database import create_collection, insert_vectors
+import uvicorn
+from fastapi import FastAPI
+from api import app  # Import FastAPI app from api.py
 
-AVRO_FILE = "/Users/pateltayyab/Downloads/news_data5000.avro"
+AVRO_FILE = "/Users/pateltayyab/Downloads/news_data100.avro"
 
 # Ensure Qdrant collection exists
 create_collection()
@@ -31,3 +34,6 @@ print("Inserting embeddings into Qdrant...")
 insert_vectors(df)
 
 print("✅ Pipeline execution complete!")
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
