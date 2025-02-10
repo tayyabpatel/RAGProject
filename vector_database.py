@@ -1,6 +1,6 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, Distance, VectorParams
-import pandas as pd
+import numpy as np
 
 # Connect to Qdrant
 client = QdrantClient("localhost", port=6333)
@@ -15,7 +15,7 @@ def create_collection():
     try:
         client.recreate_collection(
             collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(size=768, distance=Distance.COSINE),
+            vectors_config=VectorParams(size=1024, distance=Distance.COSINE),  # Updated to 1024
         )
         print(f"✅ Collection '{COLLECTION_NAME}' created successfully.")
     except Exception as e:
@@ -26,7 +26,7 @@ def insert_vectors(df):
     Inserts article embeddings into Qdrant.
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'embedding' and metadata.
+        df (pd.DataFrame): DataFrame containing 'embedding' column.
     """
     if df is None or "embedding" not in df.columns:
         print("❌ Error: DataFrame is None or missing 'embedding' column.")
@@ -34,12 +34,12 @@ def insert_vectors(df):
     
     try:
         points = [
-            PointStruct(id=i, vector=vec, payload={"title": df.iloc[i]["title"], "content": df.iloc[i]["content_text"]})
+            PointStruct(id=i, vector=vec, payload={"title": df.iloc[i]["title"]})
             for i, vec in enumerate(df["embedding"])
         ]
 
-        client.upsert(collection_name=COLLECTION_NAME, points=points)
-        print("✅ Data inserted successfully into Qdrant.")
+        client.upsert(COLLECTION_NAME, points)
+        print("✅ Data inserted successfully.")
     except Exception as e:
         print(f"❌ Error inserting vectors: {e}")
 
