@@ -1,6 +1,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, Distance, VectorParams
 import numpy as np
+import pandas as pd
 
 # Connect to Qdrant
 client = QdrantClient("localhost", port=6333)
@@ -26,7 +27,7 @@ def insert_vectors(df):
     Inserts article embeddings into Qdrant.
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'embedding' column.
+        df (pd.DataFrame): DataFrame containing 'embedding' and 'publication_datetime' columns.
     """
     if df is None or "embedding" not in df.columns:
         print("❌ Error: DataFrame is None or missing 'embedding' column.")
@@ -35,12 +36,24 @@ def insert_vectors(df):
     try:
         points = []
         for i, row in df.iterrows():
+            publication_datetime = row.get("publication_datetime", None)
+
+            # Convert NaT values to None, otherwise store as a string
+            if pd.isna(publication_datetime):
+                publication_datetime = None
+            else:
+                publication_datetime = str(publication_datetime)  # Convert datetime to string
+
             for chunk in row["content_chunks"]:  # Insert each chunk separately
                 points.append(
                     PointStruct(
                         id=i, 
                         vector=row["embedding"], 
-                        payload={"an": row["an"], "content_text": chunk}
+                        payload={
+                            "an": row["an"], 
+                            "content_text": chunk,
+                            "publication_datetime": publication_datetime  # Properly formatted datetime
+                        }
                     )
                 )
 
@@ -65,7 +78,7 @@ def search_vectors(query_vector, top_k=5):
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
             limit=top_k,
-            with_payload=True  # Ensure metadata (title, an, content) is returned
+            with_payload=True  # Ensure metadata (title, an, content, datetime) is returned
         )
         return results
     except Exception as e:

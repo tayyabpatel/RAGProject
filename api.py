@@ -33,14 +33,14 @@ async def search_articles(request: QueryRequest):
     for result in search_results:
         an_number = result.payload.get("an")
         relevant_chunks = result.payload.get("content_text")
-
-        # Ensure we handle lists and single strings properly
-        if isinstance(relevant_chunks, str):
-            relevant_chunks = [relevant_chunks]  # Wrap in list if it's a single chunk
+        publication_datetime = result.payload.get("publication_datetime", "Unknown")
 
         response.append({
             "an_number": an_number,
-            "relevant_chunks": relevant_chunks
+            "relevant_chunks": [{
+                "text": relevant_chunks,
+                "publication_datetime": publication_datetime
+            }]
         })
 
     return {"results": response}
