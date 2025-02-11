@@ -32,15 +32,14 @@ async def search_articles(request: QueryRequest):
     response = []
     for result in search_results:
         an_number = result.payload.get("an")
-        relevant_chunks = result.payload.get("content_text")
+        content_text = result.payload.get("content_text")
         publication_datetime = result.payload.get("publication_datetime", "Unknown")
 
         response.append({
             "an_number": an_number,
-            "relevant_chunks": [{
-                "text": relevant_chunks,
-                "publication_datetime": publication_datetime
-            }]
+            "relevant_chunks": [
+                {"text": content_text, "publication_datetime": publication_datetime}
+            ]
         })
 
     return {"results": response}
