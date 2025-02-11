@@ -1,5 +1,5 @@
 import os
-from data_processing import process_avro
+from data_processing import load_avro_to_dataframe, preprocess_dataframe  # Updated function imports
 from embeddings import generate_article_embeddings
 from vector_database import create_collection, insert_vectors
 import uvicorn
@@ -16,21 +16,22 @@ if not os.path.exists(AVRO_FILE):
     print(f"❌ Error: AVRO file '{AVRO_FILE}' not found.")
     exit(1)
 
-print("Processing AVRO file...")
-df = process_avro(AVRO_FILE)
-
+print("📥 Processing AVRO file...")
+df = load_avro_to_dataframe(AVRO_FILE)  # Use correct function
 if df is None or df.empty:
-    print("❌ Error: Data processing failed or returned an empty DataFrame. Check AVRO file.")
+    print("❌ Error: Data loading failed or returned an empty DataFrame. Check AVRO file.")
     exit(1)
 
-print("Generating embeddings in batches...")
+df = preprocess_dataframe(df)  # Preprocess the DataFrame
+
+print("🧠 Generating embeddings in batches...")
 df = generate_article_embeddings(df, batch_size=16)  # Lower batch size for safety
 
 if "embedding" not in df.columns:
     print("❌ Error: Embeddings generation failed.")
     exit(1)
 
-print("Inserting embeddings into Qdrant...")
+print("📤 Inserting embeddings into Qdrant...")
 insert_vectors(df)
 
 print("✅ Pipeline execution complete!")

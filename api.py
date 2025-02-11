@@ -1,6 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-import torch
 from embeddings import generate_query_embedding
 from vector_database import search_vectors
 
@@ -12,37 +11,36 @@ class QueryRequest(BaseModel):
 @app.post("/search/")
 async def search_articles(request: QueryRequest):
     """
-    API endpoint to process a query:
-    - Embed the query
-    - Search Qdrant for the closest 5 articles
-    - Return the AN number and 5 relevant chunks from each article
+    API endpoint to search for articles similar to the given query.
+
+    Args:
+        request (QueryRequest): JSON payload containing the search query.
+
+    Returns:
+        dict: JSON response containing the top 5 relevant articles and their relevant content chunks.
     """
-    try:
-        # Generate query embedding
-        query_embedding = generate_query_embedding(request.query)
+    query_embedding = generate_query_embedding(request.query)
 
-        # Search for closest articles
-        search_results = search_vectors(query_embedding, top_k=5)
+    if query_embedding is None:
+        return {"error": "Failed to generate query embedding."}
 
-        if not search_results:
-            raise HTTPException(status_code=404, detail="No relevant articles found.")
+    search_results = search_vectors(query_embedding, top_k=5)
 
-        response_data = []
-        for result in search_results:
-            payload = result.payload
-            an_number = payload.get("an", "N/A")  # Extract AN number
-            content_text = payload.get("content_text", "")
+    if not search_results:
+        return {"error": "No relevant articles found."}
 
-            # Extract 5 chunks of relevant text
-            chunks = content_text.split(". ")  # Split by sentence
-            relevant_chunks = chunks[:5] if len(chunks) >= 5 else chunks  # Take first 5
+    response = []
+    for result in search_results:
+        an_number = result.payload.get("an")
+        relevant_chunks = result.payload.get("content_text")
 
-            response_data.append({
-                "an_number": an_number,
-                "relevant_chunks": relevant_chunks
-            })
+        # Ensure we handle lists and single strings properly
+        if isinstance(relevant_chunks, str):
+            relevant_chunks = [relevant_chunks]  # Wrap in list if it's a single chunk
 
-        return {"results": response_data}
+        response.append({
+            "an_number": an_number,
+            "relevant_chunks": relevant_chunks
+        })
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+    return {"results": response}

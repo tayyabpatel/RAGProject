@@ -33,14 +33,16 @@ def insert_vectors(df):
         return
     
     try:
-        points = [
-            PointStruct(
-                id=i, 
-                vector=vec, 
-                payload={"an": df.iloc[i]["an"], "content_text": df.iloc[i]["content_text"]}
-            )
-            for i, vec in enumerate(df["embedding"])
-        ]
+        points = []
+        for i, row in df.iterrows():
+            for chunk in row["content_chunks"]:  # Insert each chunk separately
+                points.append(
+                    PointStruct(
+                        id=i, 
+                        vector=row["embedding"], 
+                        payload={"an": row["an"], "content_text": chunk}
+                    )
+                )
 
         client.upsert(COLLECTION_NAME, points)
         print("✅ Data inserted successfully.")
