@@ -2,6 +2,10 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, Distance, VectorParams
 import numpy as np
 import pandas as pd
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Connect to Qdrant
 client = QdrantClient("localhost", port=6333)
@@ -16,11 +20,11 @@ def create_collection():
     try:
         client.recreate_collection(
             collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(size=1024, distance=Distance.COSINE),  # Updated to 1024
+            vectors_config=VectorParams(size=1024, distance=Distance.COSINE),
         )
-        print(f"✅ Collection '{COLLECTION_NAME}' created successfully.")
+        logging.info(f"✅ Collection '{COLLECTION_NAME}' created successfully.")
     except Exception as e:
-        print(f"❌ Error creating collection: {e}")
+        logging.error(f"❌ Error creating collection: {e}")
 
 def insert_vectors(df):
     """
@@ -30,21 +34,21 @@ def insert_vectors(df):
         df (pd.DataFrame): DataFrame containing 'embedding' and 'publication_datetime' columns.
     """
     if df is None or "embedding" not in df.columns:
-        print("❌ Error: DataFrame is None or missing 'embedding' column.")
+        logging.error("❌ Error: DataFrame is None or missing 'embedding' column.")
         return
     
     try:
         points = []
         for i, row in df.iterrows():
-            publication_datetime = row.get("publication_datetime", None)
+            publication_datetime = row.get("publication_datetime", "Unknown")
 
             # Convert NaT values to None, otherwise store as a string
-            if pd.isna(publication_datetime):
-                publication_datetime = None
+            if pd.isna(publication_datetime) or publication_datetime == "NaT":
+                publication_datetime = "Unknown"
             else:
-                publication_datetime = str(publication_datetime)  # Convert datetime to string
+                publication_datetime = str(publication_datetime)
 
-            for chunk in row["content_chunks"]:  # Insert each chunk separately
+            for chunk in row["content_chunks"]:
                 points.append(
                     PointStruct(
                         id=i, 
@@ -52,15 +56,16 @@ def insert_vectors(df):
                         payload={
                             "an": row["an"], 
                             "content_text": chunk,
-                            "publication_datetime": publication_datetime  # Properly formatted datetime
+                            "publication_datetime": publication_datetime  
                         }
                     )
                 )
-
+        
+        logging.info(f"Inserting {len(points)} vectors into Qdrant.")
         client.upsert(COLLECTION_NAME, points)
-        print("✅ Data inserted successfully.")
+        logging.info("✅ Data inserted successfully.")
     except Exception as e:
-        print(f"❌ Error inserting vectors: {e}")
+        logging.error(f"❌ Error inserting vectors: {e}")
 
 def search_vectors(query_vector, top_k=5):
     """
@@ -78,9 +83,10 @@ def search_vectors(query_vector, top_k=5):
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
             limit=top_k,
-            with_payload=True  # Ensure metadata (title, an, content, datetime) is returned
+            with_payload=True
         )
+        logging.info(f"Search returned {len(results)} results.")
         return results
     except Exception as e:
-        print(f"❌ Error searching vectors: {e}")
+        logging.error(f"❌ Error searching vectors: {e}")
         return None
