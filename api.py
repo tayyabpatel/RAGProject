@@ -17,7 +17,7 @@ async def search_articles(request: QueryRequest):
         request (QueryRequest): JSON payload containing the search query.
 
     Returns:
-        dict: JSON response containing the top 5 relevant articles and their relevant content chunks.
+        dict: JSON response containing relevant articles and their relevant content chunks.
     """
     query_embedding = generate_query_embedding(request.query)
 
@@ -32,14 +32,26 @@ async def search_articles(request: QueryRequest):
     response = []
     for result in search_results:
         an_number = result.payload.get("an")
-        content_text = result.payload.get("content_text")
         publication_datetime = result.payload.get("publication_datetime", "Unknown")
+        headline = result.payload.get("headline", "No Headline Available")
+        content_chunks = result.payload.get("content_text")
 
-        response.append({
-            "an_number": an_number,
-            "relevant_chunks": [
-                {"text": content_text, "publication_datetime": publication_datetime}
-            ]
-        })
+        # If content_chunks is a list with multiple chunks, keep relevant_chunks structure
+        if isinstance(content_chunks, list) and len(content_chunks) > 1:
+            response.append({
+                "an_number": an_number,
+                "relevant_chunks": [
+                    {"text": chunk, "publication_datetime": publication_datetime}
+                    for chunk in content_chunks
+                ]
+            })
+        else:
+            # If only one chunk (or string), flatten response structure
+            response.append({
+                "an": an_number,
+                "publication_datetime": publication_datetime,
+                "headline": headline,
+                "text": content_chunks if isinstance(content_chunks, str) else content_chunks[0]
+            })
 
     return {"results": response}
