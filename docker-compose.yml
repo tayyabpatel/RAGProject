@@ -6,6 +6,7 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+      - /opt/RAGProject/qdrant-config:/qdrant/config  # Mapping config directory
     restart: always
 
   app:
@@ -16,7 +17,7 @@ services:
     depends_on:
       - qdrant
     volumes:
-      - .:/app
+      - /opt/RAGProject:/app
     restart: always
     environment:
       - QDRANT_HOST=qdrant
@@ -26,3 +27,4 @@ volumes:
   qdrant_data:
     name: qdrant_data
     external: true
+
