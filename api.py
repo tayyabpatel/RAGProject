@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from io import BytesIO
 import logging
-from data_processing import process_avro_data
+from data_processing import load_avro_to_dataframe, preprocess_dataframe  # ✅ Fixed imports
 from vector_database import insert_vectors, search_vectors
 from embeddings import generate_query_embedding
 
@@ -60,7 +60,8 @@ async def upload_avro(file: UploadFile = File(...)):
         contents = await file.read()
         bytes_reader = BytesIO(contents)
 
-        df = process_avro_data(bytes_reader)
+        df = load_avro_to_dataframe(bytes_reader)  # ✅ Fixed function call
+        df = preprocess_dataframe(df)  # ✅ Process DataFrame
 
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="Invalid AVRO file or no records found.")

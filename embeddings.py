@@ -35,8 +35,11 @@ def generate_article_embeddings(df, batch_size=32, max_length=512):
         # Encode in smaller batches to prevent memory issues
         batch_embeddings = embedding_model.encode(
             batch_texts,
-            convert_to_tensor=True
-        ).cpu().tolist()
+            convert_to_tensor=False  # Ensures output is always a list
+        )
+
+        # Ensure embeddings are always lists of floats
+        batch_embeddings = [list(emb) if isinstance(emb, (list, torch.Tensor)) else [emb] for emb in batch_embeddings]
 
         embeddings.extend(batch_embeddings)
 
@@ -55,4 +58,7 @@ def generate_query_embedding(query, max_length=512):
         list: Embedding vector for the query.
     """
     query = query[:max_length]  # Truncate if too long
-    return embedding_model.encode(query, convert_to_tensor=True).cpu().tolist()
+    query_embedding = embedding_model.encode(query, convert_to_tensor=False)  # Always returns a list
+
+    # Ensure query embedding is always a list of floats
+    return list(query_embedding) if isinstance(query_embedding, (list, torch.Tensor)) else [query_embedding]
