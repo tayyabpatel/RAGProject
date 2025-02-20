@@ -18,6 +18,7 @@ services:
       - qdrant
     volumes:
       - /opt/RAGProject:/app
+      - /opt/RAGProject/uploads:/app/uploads  # New: Directory for AVRO file uploads
     restart: always
     environment:
       - QDRANT_HOST=qdrant
@@ -27,4 +28,3 @@ volumes:
   qdrant_data:
     name: qdrant_data
     external: true
-

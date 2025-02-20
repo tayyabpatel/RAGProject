@@ -3,34 +3,45 @@ import pandas as pd
 import numpy as np
 import logging
 from datetime import datetime
+from io import BytesIO
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Load AVRO file and convert to Pandas DataFrame
-def load_avro_to_dataframe(avro_file_path):
+def load_avro_to_dataframe(avro_source):
+    """
+    Loads AVRO file and converts to Pandas DataFrame.
+    Supports both local file paths and file-like objects from API uploads.
+    """
     try:
-        with open(avro_file_path, "rb") as f:
-            reader = fastavro.reader(f)
+        if isinstance(avro_source, str):  # Local file path
+            with open(avro_source, "rb") as f:
+                reader = fastavro.reader(f)
+                records = [record for record in reader]
+        elif isinstance(avro_source, BytesIO):  # Uploaded file
+            avro_source.seek(0)
+            reader = fastavro.reader(avro_source)
             records = [record for record in reader]
+        else:
+            raise ValueError("Invalid AVRO source type.")
+
         df = pd.DataFrame(records)
-        logging.info(f"Loaded AVRO file: {avro_file_path} with {len(df)} records.")
+        logging.info(f"Loaded AVRO file with {len(df)} records.")
+        return df
+
     except Exception as e:
         logging.error(f"❌ Error loading AVRO file: {e}")
         return None
 
-    return df
-
-# Function to chunk content by words
 def chunk_text_by_words(text, max_words=700):
+    """
+    Splits text into chunks of at most `max_words` words.
+    """
     words = text.split()
     if len(words) <= max_words:
-        return [text]  # If the text is within the limit, return as a single chunk
-    
-    chunks = [" ".join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
-    return chunks
+        return [text]
+    return [" ".join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
 
-# Function to convert timestamps correctly
 def convert_datetime_column(df, column_name, unit='ms'):
     """
     Converts EPOCH timestamp columns into readable datetime format.
@@ -39,7 +50,6 @@ def convert_datetime_column(df, column_name, unit='ms'):
         logging.info(f"Checking values in {column_name} before conversion:")
         logging.info(df[column_name].head())
 
-        # Convert timestamp using the correct unit
         df[column_name] = pd.to_datetime(df[column_name], unit=unit, errors='coerce')
 
         logging.info(f"Converted column {column_name} to datetime. Sample values:")
@@ -47,15 +57,20 @@ def convert_datetime_column(df, column_name, unit='ms'):
 
     return df
 
-# Preprocess DataFrame
 def preprocess_dataframe(df):
+    """
+    Prepares DataFrame for embedding and storage:
+    - Converts timestamps
+    - Merges text fields
+    - Splits text into chunks
+    """
     if df is None:
         logging.error("❌ Error: DataFrame is None. Ensure AVRO file is loaded correctly.")
         return None
 
-    df.fillna(value=np.nan, inplace=True)  # Replace nulls with NaN
+    df.fillna(value=np.nan, inplace=True)
 
-    # Convert timestamps using 'ms' for publication_datetime
+    # Convert timestamps
     date_columns = ["ingestion_datetime", "availability_datetime", "modification_datetime", "publication_datetime", "publication_date"]
     for col in date_columns:
         df = convert_datetime_column(df, col, unit='ms')
@@ -64,7 +79,7 @@ def preprocess_dataframe(df):
     if "word_count" in df.columns:
         df["word_count"] = pd.to_numeric(df["word_count"], errors='coerce').fillna(0).astype(int)
 
-    # Merge snippet and body into a new column 'content_text'
+    # Merge snippet and body into a single column
     if "snippet" in df.columns and "body" in df.columns:
         df["content_text"] = df["snippet"].fillna("") + " " + df["body"].fillna("")
         df.drop(columns=["snippet", "body"], inplace=True)
@@ -72,11 +87,9 @@ def preprocess_dataframe(df):
     # Apply chunking
     df["content_chunks"] = df["content_text"].apply(lambda x: chunk_text_by_words(x, max_words=700))
 
-    # Ensure publication_datetime is properly formatted before inserting into Qdrant
+    # Format publication_datetime as string for storage
     if "publication_datetime" in df.columns:
-        df["publication_datetime"] = df["publication_datetime"].apply(
-            lambda x: str(x) if pd.notna(x) else "Unknown"
-        )
+        df["publication_datetime"] = df["publication_datetime"].apply(lambda x: str(x) if pd.notna(x) else "Unknown")
 
     logging.info("Final check on publication_datetime values:")
     logging.info(df["publication_datetime"].head())

@@ -13,10 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-scipy \
     python3-requests \
     python3-torch \
+    fastavro \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
 COPY . /app
+
+# Create directory for AVRO file uploads
+RUN mkdir -p /app/uploads
 
 # Upgrade pip and install Python dependencies
 RUN python3 -m pip install --no-cache-dir --upgrade pip \
@@ -26,8 +30,9 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip \
 # Expose API port
 EXPOSE 8000
 
+# Set up cache directory for Hugging Face models
+ENV TRANSFORMERS_CACHE=/app/huggingface_cache
+
 # Command to run FastAPI app
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
 
-# Set up cache directory for Hugging Face models
-ENV TRANSFORMERS_CACHE=/app/huggingface_cache

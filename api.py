@@ -1,24 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from io import BytesIO
+import logging
+from data_processing import process_avro_data
+from vector_database import insert_vectors, search_vectors
 from embeddings import generate_query_embedding
-from vector_database import search_vectors
 
 app = FastAPI()
+
+logging.basicConfig(level=logging.INFO)
 
 class QueryRequest(BaseModel):
     query: str
 
 @app.post("/search/")
 async def search_articles(request: QueryRequest):
-    """
-    API endpoint to search for articles similar to the given query.
-
-    Args:
-        request (QueryRequest): JSON payload containing the search query.
-
-    Returns:
-        dict: JSON response containing relevant articles and their relevant content chunks.
-    """
     query_embedding = generate_query_embedding(request.query)
 
     if query_embedding is None:
@@ -36,7 +33,6 @@ async def search_articles(request: QueryRequest):
         headline = result.payload.get("headline", "No Headline Available")
         content_chunks = result.payload.get("content_text")
 
-        # If content_chunks is a list with multiple chunks, keep relevant_chunks structure
         if isinstance(content_chunks, list) and len(content_chunks) > 1:
             response.append({
                 "an_number": an_number,
@@ -46,7 +42,6 @@ async def search_articles(request: QueryRequest):
                 ]
             })
         else:
-            # If only one chunk (or string), flatten response structure
             response.append({
                 "an": an_number,
                 "publication_datetime": publication_datetime,
@@ -55,3 +50,24 @@ async def search_articles(request: QueryRequest):
             })
 
     return {"results": response}
+
+@app.post("/upload/")
+async def upload_avro(file: UploadFile = File(...)):
+    if not file.filename.endswith(".avro"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an AVRO file.")
+
+    try:
+        contents = await file.read()
+        bytes_reader = BytesIO(contents)
+
+        df = process_avro_data(bytes_reader)
+
+        if df is None or df.empty:
+            raise HTTPException(status_code=400, detail="Invalid AVRO file or no records found.")
+
+        insert_vectors(df)
+
+        return JSONResponse(content={"message": "File processed and stored successfully."}, status_code=200)
+    except Exception as e:
+        logging.error(f"Error processing AVRO: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")

@@ -3,6 +3,7 @@ from qdrant_client.models import PointStruct, Distance, VectorParams
 import numpy as np
 import pandas as pd
 import logging
+from embeddings import generate_text_embedding  # Ensure this function exists for embedding generation
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -31,16 +32,17 @@ def insert_vectors(df):
     Inserts article embeddings into Qdrant.
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'embedding' and 'publication_datetime' columns.
+        df (pd.DataFrame): DataFrame containing 'content_chunks' and other metadata.
     """
-    if df is None or "embedding" not in df.columns:
-        logging.error("❌ Error: DataFrame is None or missing 'embedding' column.")
+    if df is None or "content_chunks" not in df.columns:
+        logging.error("❌ Error: DataFrame is None or missing 'content_chunks' column.")
         return
     
     try:
         points = []
         for i, row in df.iterrows():
             publication_datetime = row.get("publication_datetime", "Unknown")
+            an_number = row.get("an", "Unknown")
 
             # Convert NaT values to None, otherwise store as a string
             if pd.isna(publication_datetime) or publication_datetime == "NaT":
@@ -49,12 +51,13 @@ def insert_vectors(df):
                 publication_datetime = str(publication_datetime)
 
             for chunk in row["content_chunks"]:
+                embedding = generate_text_embedding(chunk)  # Generate embedding dynamically
                 points.append(
                     PointStruct(
                         id=i, 
-                        vector=row["embedding"], 
+                        vector=embedding, 
                         payload={
-                            "an": row["an"], 
+                            "an": an_number, 
                             "content_text": chunk,
                             "publication_datetime": publication_datetime  
                         }
