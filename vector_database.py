@@ -66,11 +66,8 @@ def insert_vectors(df):
             for chunk, embedding in zip(row["content_chunks"], row["embedding"]):
                 vector_id = abs(hash(chunk)) % (10**12)  # Prevent negative IDs
                 
-                # ✅ Ensure embeddings are **always** a flat list
+                # ✅ Ensure embeddings are always a flat list
                 embedding = np.array(embedding).flatten().tolist()
-
-                # ✅ Store embeddings under correct named field "embedding"
-                vector_data = {"embedding": embedding}
 
                 # ✅ Validate embedding type
                 if not isinstance(embedding, list) or not all(isinstance(x, float) for x in embedding):
@@ -82,7 +79,7 @@ def insert_vectors(df):
                 points.append(
                     PointStruct(
                         id=vector_id, 
-                        vector=vector_data,  # ✅ Store embedding with correct named field
+                        vector=embedding,  # ✅ Correct vector field
                         payload={
                             "an": an_number, 
                             "content_text": chunk,

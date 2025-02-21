@@ -3,8 +3,8 @@ from sentence_transformers import SentenceTransformer
 import pandas as pd
 from tqdm import tqdm
 
-# Load the embedding model
-embedding_model = SentenceTransformer("jinaai/jina-embeddings-v3", trust_remote_code=True)
+# Load the embedding model from the locally saved directory
+embedding_model = SentenceTransformer("/app/models/jina-embeddings-v3", trust_remote_code=True)
 
 def generate_article_embeddings(df, batch_size=32, max_length=512):
     """
