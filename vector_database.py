@@ -69,6 +69,9 @@ def insert_vectors(df):
                 # ✅ Ensure embeddings are **always** a flat list
                 embedding = np.array(embedding).flatten().tolist()
 
+                # ✅ Store embeddings under correct named field "embedding"
+                vector_data = {"embedding": embedding}
+
                 # ✅ Validate embedding type
                 if not isinstance(embedding, list) or not all(isinstance(x, float) for x in embedding):
                     logging.error(f"❌ Invalid embedding format for chunk: {chunk}")
@@ -79,7 +82,7 @@ def insert_vectors(df):
                 points.append(
                     PointStruct(
                         id=vector_id, 
-                        vector=embedding, 
+                        vector=vector_data,  # ✅ Store embedding with correct named field
                         payload={
                             "an": an_number, 
                             "content_text": chunk,
@@ -112,7 +115,7 @@ def search_vectors(query_vector, top_k=5):
     try:
         results = client.search(
             collection_name=COLLECTION_NAME,
-            query_vector=query_vector,
+            query_vector={"embedding": query_vector},  # ✅ Ensure correct vector field for query
             limit=top_k,
             with_payload=True
         )
