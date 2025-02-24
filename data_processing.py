@@ -45,11 +45,15 @@ def chunk_text_by_words(text, max_words=700):
 def convert_datetime_column(df, column_name, unit='ms'):
     """
     Converts EPOCH timestamp columns into readable datetime format.
+    Ensures only valid timestamps are converted.
     """
     if column_name in df.columns:
         logging.info(f"Checking values in {column_name} before conversion:")
         logging.info(df[column_name].head())
 
+        # Convert only if values are reasonable (avoid overflow issues)
+        df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+        df[column_name] = df[column_name].where(df[column_name] > 0)  # Ignore negative/zero timestamps
         df[column_name] = pd.to_datetime(df[column_name], unit=unit, errors='coerce')
 
         logging.info(f"Converted column {column_name} to datetime. Sample values:")
@@ -71,11 +75,14 @@ def preprocess_dataframe(df):
     df.fillna(value=np.nan, inplace=True)
 
     # Convert timestamps
-    date_columns = ["ingestion_datetime", "availability_datetime", "modification_datetime", "publication_datetime", "publication_date"]
+    date_columns = [
+        "ingestion_datetime", "availability_datetime", "modification_datetime",
+        "modification_date", "publication_datetime", "publication_date"
+    ]
     for col in date_columns:
         df = convert_datetime_column(df, col, unit='ms')
 
-    # Convert word_count to integer
+    # Convert word_count to integer safely
     if "word_count" in df.columns:
         df["word_count"] = pd.to_numeric(df["word_count"], errors='coerce').fillna(0).astype(int)
 

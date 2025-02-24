@@ -8,21 +8,17 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-dev \
-    python3-setuptools \
-    python3-numpy \
-    python3-scipy \
-    python3-requests \
-    python3-torch \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project files
-COPY . /app
-
-# Upgrade pip and install Python dependencies
+# Install necessary dependencies
 RUN python3 -m pip install --no-cache-dir --upgrade pip \
-    && python3 -m pip install --no-cache-dir pandas \
-    && python3 -m pip install --no-cache-dir fastavro \
-    && python3 -m pip install --no-cache-dir -r requirements.txt  # Ensure python-multipart gets installed
+    && python3 -m pip install --no-cache-dir pandas fastavro \
+    && python3 -m pip install --no-cache-dir transformers torch einops 'numpy<2' \
+    && python3 -m pip install --no-cache-dir -r requirements.txt
+
+# Copy project files selectively (avoid unnecessary files)
+COPY embeddings.py vector_database.py api.py /app/
+COPY data_processing.py /app/
 
 # Expose API port
 EXPOSE 8000

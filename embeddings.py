@@ -1,47 +1,42 @@
 import torch
-from sentence_transformers import SentenceTransformer
+from transformers import AutoModel, AutoTokenizer
 import pandas as pd
 from tqdm import tqdm
 
 # Load the embedding model from the locally saved directory
-embedding_model = SentenceTransformer("/app/models/jina-embeddings-v3", trust_remote_code=True)
+model = AutoModel.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained("jinaai/jina-embeddings-v3", trust_remote_code=True)
 
-def generate_article_embeddings(df, batch_size=32, max_length=512):
+def generate_article_embeddings(df, batch_size=8, max_length=512):
     """
-    Generates embeddings for news articles and stores them in a new column using batch processing.
+    Generates embeddings for news articles using AutoModel.
+    Concatenates title, snippet, and body before encoding.
 
     Args:
-        df (pd.DataFrame): DataFrame containing the news articles.
+        df (pd.DataFrame): DataFrame containing 'title', 'snippet', and 'body'.
         batch_size (int): Number of samples to process at a time.
-        max_length (int): Maximum token length per document to avoid memory overflow.
+        max_length (int): Maximum token length per document.
 
     Returns:
         pd.DataFrame: DataFrame with an additional 'embedding' column.
     """
-    if "content_text" not in df.columns:
-        print("❌ Error: 'content_text' column not found in DataFrame.")
+    required_columns = ["title", "snippet", "body"]
+    if not all(col in df.columns for col in required_columns):
+        print("❌ Error: Required columns ('title', 'snippet', 'body') not found.")
         return df
 
-    df["content_text"] = df["content_text"].fillna("").astype(str)
+    df.fillna("", inplace=True)
+    df["full_text"] = df["title"] + " " + df["snippet"] + " " + df["body"]
 
-    # Split into batches
     embeddings = []
     for i in tqdm(range(0, len(df), batch_size), desc="Generating embeddings in batches"):
-        batch_texts = df["content_text"].iloc[i:i+batch_size].tolist()
+        batch_texts = df["full_text"].iloc[i:i+batch_size].tolist()
 
-        # Truncate texts that exceed max_length
-        batch_texts = [text[:max_length] for text in batch_texts]
+        inputs = tokenizer(batch_texts, padding=True, truncation=True, max_length=max_length, return_tensors="pt")
+        with torch.no_grad():
+            batch_embeddings = model(**inputs, task="retrieval.passage").last_hidden_state.mean(dim=1)
 
-        # Encode in smaller batches to prevent memory issues
-        batch_embeddings = embedding_model.encode(
-            batch_texts,
-            convert_to_tensor=False  # Ensures output is always a list
-        )
-
-        # Ensure embeddings are always lists of floats
-        batch_embeddings = [list(emb) if isinstance(emb, (list, torch.Tensor)) else [emb] for emb in batch_embeddings]
-
-        embeddings.extend(batch_embeddings)
+        embeddings.extend(batch_embeddings.tolist())
 
     df["embedding"] = embeddings
     return df
@@ -57,8 +52,8 @@ def generate_query_embedding(query, max_length=512):
     Returns:
         list: Embedding vector for the query.
     """
-    query = query[:max_length]  # Truncate if too long
-    query_embedding = embedding_model.encode(query, convert_to_tensor=False)  # Always returns a list
+    inputs = tokenizer(query, padding=True, truncation=True, max_length=max_length, return_tensors="pt")
+    with torch.no_grad():
+        query_embedding = model(**inputs, task="retrieval.query").last_hidden_state.mean(dim=1)
 
-    # Ensure query embedding is always a list of floats
-    return list(query_embedding) if isinstance(query_embedding, (list, torch.Tensor)) else [query_embedding]
+    return query_embedding.tolist()

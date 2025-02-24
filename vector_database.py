@@ -36,60 +36,37 @@ def insert_vectors(df):
     Inserts article embeddings into Qdrant.
 
     Args:
-        df (pd.DataFrame): DataFrame containing 'content_chunks' and other metadata.
+        df (pd.DataFrame): DataFrame containing 'title', 'snippet', 'body', and other metadata.
     """
-    if df is None or "content_chunks" not in df.columns:
-        logging.error("❌ Error: DataFrame is None or missing 'content_chunks' column.")
+    if df is None or "title" not in df.columns or "snippet" not in df.columns or "body" not in df.columns:
+        logging.error("❌ Error: DataFrame is missing required columns.")
         return
     
     try:
-        # Ensure embeddings are generated
+        # Generate embeddings for full articles
         df = generate_article_embeddings(df)
 
         if "embedding" not in df.columns:
             logging.error("❌ Error: Embeddings were not generated.")
             return
         
-        logging.debug(f"Generated embeddings:\n{df[['content_text', 'embedding']].head()}")  # Debugging
+        logging.debug(f"Generated embeddings:\n{df[['full_text', 'embedding']].head()}")  # Debugging
 
         points = []
         for i, row in df.iterrows():
-            publication_datetime = row.get("publication_datetime", "Unknown")
-            an_number = row.get("an", "Unknown")
+            vector_id = abs(hash(row["full_text"])) % (10**12)  # Prevent negative IDs
 
-            # Convert NaT values to None, otherwise store as a string
-            if pd.isna(publication_datetime) or publication_datetime == "NaT":
-                publication_datetime = "Unknown"
-            else:
-                publication_datetime = str(publication_datetime)
+            embedding = np.array(row["embedding"]).flatten().tolist()
 
-            for chunk, embedding in zip(row["content_chunks"], row["embedding"]):
-                vector_id = abs(hash(chunk)) % (10**12)  # Prevent negative IDs
-                
-                # ✅ Ensure embeddings are always a flat list
-                embedding = np.array(embedding).flatten().tolist()
-
-                # ✅ Validate embedding type
-                if not isinstance(embedding, list) or not all(isinstance(x, float) for x in embedding):
-                    logging.error(f"❌ Invalid embedding format for chunk: {chunk}")
-                    continue  # Skip inserting this vector
-                
-                logging.debug(f"Inserting vector ID {vector_id}: {embedding[:5]}...")  # Log first 5 values
-                
-                points.append(
-                    PointStruct(
-                        id=vector_id, 
-                        vector=embedding,  # ✅ Correct vector field
-                        payload={
-                            "an": an_number, 
-                            "content_text": chunk,
-                            "publication_datetime": publication_datetime  
-                        }
-                    )
+            points.append(
+                PointStruct(
+                    id=vector_id, 
+                    vector={"embedding": embedding},  # ✅ Correctly formatted named vector
+                    payload={"an": row.get("an", "Unknown"), "content_text": row["full_text"]}
                 )
+            )
         
         if points:
-            logging.info(f"Inserting {len(points)} vectors into Qdrant.")
             client.upsert(COLLECTION_NAME, points)
             logging.info("✅ Data inserted successfully.")
         else:
@@ -97,27 +74,3 @@ def insert_vectors(df):
             
     except Exception as e:
         logging.error(f"❌ Error inserting vectors: {e}")
-
-def search_vectors(query_vector, top_k=5):
-    """
-    Searches for similar articles using the query embedding.
-
-    Args:
-        query_vector (list): The query embedding vector.
-        top_k (int): Number of results to retrieve.
-
-    Returns:
-        list: Retrieved documents with similarity scores.
-    """
-    try:
-        results = client.search(
-            collection_name=COLLECTION_NAME,
-            query_vector={"embedding": query_vector},  # ✅ Ensure correct vector field for query
-            limit=top_k,
-            with_payload=True
-        )
-        logging.info(f"Search returned {len(results)} results.")
-        return results
-    except Exception as e:
-        logging.error(f"❌ Error searching vectors: {e}")
-        return None

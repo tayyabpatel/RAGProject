@@ -1,12 +1,12 @@
 services:
   qdrant:
-    image: qdrant/qdrant:v1.13.2  # Match client version
+    image: qdrant/qdrant:v1.13.2
     container_name: qdrant_db
     ports:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
-      - /opt/RAGProject/qdrant-config:/qdrant/config  # Mapping config directory
+      - /opt/RAGProject/qdrant-config:/qdrant/config
     restart: always
 
   app:
@@ -18,8 +18,7 @@ services:
       - qdrant
     volumes:
       - /opt/RAGProject:/app
-      - /opt/RAGProject/uploads:/app/uploads  # Directory for AVRO file uploads
-      - /opt/RAGProject/data:/app/data  # ✅ Mount data directory for AVRO files
+      - /opt/RAGProject/data:/app/data
     restart: always
     environment:
       - QDRANT_HOST=qdrant
