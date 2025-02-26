@@ -27,13 +27,3 @@ def generate_article_embeddings(df, batch_size=8, max_length=512):
 
     df["embedding"] = embeddings
     return df
-
-def generate_query_embedding(query, max_length=512):
-    """
-    Generates an embedding for a search query.
-    """
-    inputs = tokenizer(query, padding=True, truncation=True, max_length=max_length, return_tensors="pt")
-    with torch.no_grad():
-        query_embedding = model(**inputs, task="retrieval.query").last_hidden_state.mean(dim=1)
-
-    return query_embedding.tolist()

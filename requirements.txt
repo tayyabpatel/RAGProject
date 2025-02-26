@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-sentence-transformers
-qdrant-client
-einops
-
-python-multipart

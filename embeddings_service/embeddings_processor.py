@@ -5,34 +5,10 @@ import logging
 from io import BytesIO
 from data_processing import preprocess_dataframe
 from embeddings import generate_article_embeddings
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, Distance, VectorParams
-import numpy as np
+from vector_store import insert_vectors
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-# Qdrant Client
-client = QdrantClient(
-    host=os.getenv("QDRANT_HOST", "qdrant"),
-    port=int(os.getenv("QDRANT_PORT", "6333")),
-)
-
-# Qdrant Collection Name
-COLLECTION_NAME = "news_articles"
-
-def create_collection():
-    """
-    Creates a Qdrant collection with a named vector field.
-    """
-    try:
-        client.recreate_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config={"embedding": VectorParams(size=1024, distance=Distance.COSINE)},
-        )
-        logging.info(f"✅ Collection '{COLLECTION_NAME}' created successfully.")
-    except Exception as e:
-        logging.error(f"❌ Error creating collection: {e}")
 
 def load_avro_to_dataframe(avro_source):
     """
@@ -78,22 +54,4 @@ def process_and_store_embeddings(avro_file_path):
         return
 
     # Store in Qdrant
-    points = []
-    for i, row in df.iterrows():
-        vector_id = abs(hash(row["full_text"])) % (10**12)  # Unique ID
-        embedding = np.array(row["embedding"]).flatten().tolist()
-
-        points.append(
-            PointStruct(
-                id=vector_id,
-                vector={"embedding": embedding},
-                payload={"an": row.get("an", "Unknown"), "content_text": row["full_text"]},
-            )
-        )
-
-    if points:
-        client.upsert(COLLECTION_NAME, points)
-        logging.info("✅ Data stored in Qdrant successfully.")
-    else:
-        logging.warning("⚠️ No valid vectors to insert.")
-
+    insert_vectors(df)

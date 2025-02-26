@@ -11,8 +11,8 @@ COPY requirements.txt /app/
 RUN python3 -m pip install --no-cache-dir --upgrade pip \
     && python3 -m pip install --no-cache-dir -r requirements.txt
 
-# Copy API source files
-COPY api.py /app/
+# Copy API and dependencies
+COPY api.py vector_database.py /app/
 
 # Expose API port
 EXPOSE 8000
