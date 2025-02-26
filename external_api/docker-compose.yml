@@ -1,0 +1,12 @@
+services:
+  external_api:
+    build: .
+    container_name: external_api
+    ports:
+      - "8000:8000"
+    environment:
+      - EMBEDDINGS_SERVICE_URL=http://embeddings_service:5001
+    # depends_on:
+    #   - embeddings_service
+    restart: always
+

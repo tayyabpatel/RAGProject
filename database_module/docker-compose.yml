@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   qdrant:
     image: qdrant/qdrant:v1.13.2
@@ -11,12 +9,10 @@ services:
     restart: always
 
   database:
-    build: ./database_module
+    build: .
     container_name: database_service
-    environment:
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - QDRANT_COLLECTION=news_articles
+    env_file:
+      - .env  # ✅ Load environment variables dynamically
     depends_on:
       - qdrant
     restart: always

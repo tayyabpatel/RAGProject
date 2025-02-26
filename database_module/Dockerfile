@@ -14,13 +14,10 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip \
 # Copy source files
 COPY database.py /app/
 
-# Copy environment variables
-COPY .env /app/
-
-# Set environment variables
-ENV QDRANT_HOST=qdrant
-ENV QDRANT_PORT=6333
-ENV QDRANT_COLLECTION=news_articles
+# Set environment variables dynamically (No .env file copied)
+ENV QDRANT_HOST=${QDRANT_HOST:-qdrant}
+ENV QDRANT_PORT=${QDRANT_PORT:-6333}
+ENV QDRANT_COLLECTION=${QDRANT_COLLECTION:-news_articles}
 
 # Expose API port
 EXPOSE 6000

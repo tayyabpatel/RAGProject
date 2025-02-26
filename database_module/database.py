@@ -3,8 +3,9 @@ import numpy as np
 import logging
 from fastapi import FastAPI, HTTPException
 from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, Distance, VectorParams
+from qdrant_client.models import PointStruct, Distance, VectorParams, NamedVector
 from pydantic import BaseModel
+import pandas as pd
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -21,7 +22,7 @@ app = FastAPI()
 
 class InsertRequest(BaseModel):
     embeddings: list
-    metadata: dict
+    metadata: list  # Each embedding should have corresponding metadata
 
 class QueryRequest(BaseModel):
     query_vector: list
@@ -35,28 +36,37 @@ def create_collection():
     try:
         client.recreate_collection(
             collection_name=QDRANT_COLLECTION,
-            vectors_config={"embedding": VectorParams(size=1024, distance=Distance.COSINE)},
+            vectors_config={
+                "embedding": VectorParams(size=1024, distance=Distance.COSINE)
+            },
         )
         logging.info(f"✅ Collection '{QDRANT_COLLECTION}' created successfully.")
         return {"status": "success", "message": f"Collection '{QDRANT_COLLECTION}' created."}
     except Exception as e:
         logging.error(f"❌ Error creating collection: {e}")
-        raise HTTPException(status_code=500, detail="Error creating collection.")
+        raise HTTPException(status_code=500, detail=f"Error creating collection: {str(e)}")
 
 @app.post("/insert_vectors/")
 def insert_vectors(request: InsertRequest):
     """
-    Inserts article embeddings into Qdrant.
+    Inserts batch article embeddings into Qdrant.
     """
+    if not request.embeddings or not request.metadata:
+        raise HTTPException(status_code=400, detail="Invalid input: Embeddings or metadata missing.")
+
+    if len(request.embeddings) != len(request.metadata):
+        raise HTTPException(status_code=400, detail="Mismatch between embeddings and metadata lengths.")
+
     try:
         points = []
-        for i, embedding in enumerate(request.embeddings):
+        for i, (embedding, meta) in enumerate(zip(request.embeddings, request.metadata)):
             vector_id = abs(hash(str(embedding))) % (10**12)  # Unique vector ID
+            
             points.append(
                 PointStruct(
                     id=vector_id,
-                    vector={"embedding": embedding},
-                    payload=request.metadata
+                    vector={"embedding": embedding},  # ✅ Named vector field
+                    payload=meta  # ✅ Ensure metadata is properly stored
                 )
             )
 
@@ -70,7 +80,7 @@ def insert_vectors(request: InsertRequest):
     
     except Exception as e:
         logging.error(f"❌ Error inserting vectors: {e}")
-        raise HTTPException(status_code=500, detail="Error inserting vectors.")
+        raise HTTPException(status_code=500, detail=f"Error inserting vectors: {str(e)}")
 
 @app.post("/search_vectors/")
 def search_vectors(request: QueryRequest):
@@ -80,12 +90,22 @@ def search_vectors(request: QueryRequest):
     try:
         results = client.search(
             collection_name=QDRANT_COLLECTION,
-            query_vector={"embedding": request.query_vector},
+            query_vector=NamedVector(name="embedding", vector=request.query_vector),  # ✅ Specify vector name
             limit=request.top_k,
             with_payload=True
         )
         logging.info(f"🔍 Search returned {len(results)} results.")
-        return {"results": results}
+        
+        formatted_results = [
+            {
+                "an": res.payload.get("an", "Unknown"),
+                "publication_datetime": res.payload.get("publication_datetime", "Unknown"),
+                "content_text": res.payload.get("content_text", "No Content Available")
+            }
+            for res in results
+        ]
+
+        return {"results": formatted_results}
     except Exception as e:
         logging.error(f"❌ Error searching vectors: {e}")
-        raise HTTPException(status_code=500, detail="Error searching Qdrant.")
+        raise HTTPException(status_code=500, detail=f"Error searching Qdrant: {str(e)}")

@@ -14,6 +14,8 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip \
 # Copy API and dependencies
 COPY api.py vector_database.py /app/
 
+
+
 # Expose API port
 EXPOSE 8000
 
