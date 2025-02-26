@@ -13,6 +13,8 @@ services:
     container_name: database_service
     env_file:
       - .env  # ✅ Load environment variables dynamically
+    volumes:
+      - /opt/RAGProject/data:/app/data  # ✅ Mount data directory for AVRO access
     depends_on:
       - qdrant
     restart: always

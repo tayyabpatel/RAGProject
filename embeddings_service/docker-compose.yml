@@ -1,0 +1,10 @@
+services:
+  embeddings_service:
+    build: .
+    container_name: embeddings_service
+    ports:
+      - "5001:5001"
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+    restart: always

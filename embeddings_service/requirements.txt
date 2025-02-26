@@ -1,9 +1,9 @@
 fastapi
 uvicorn
-qdrant-client
-numpy
+torch
+transformers
 pandas
+tqdm
+requests
 numpy
 qdrant-client
-requests
-fastavro

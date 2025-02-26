@@ -19,9 +19,7 @@ client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 COLLECTION_NAME = "news_articles"
 
 def create_collection():
-    """
-    Creates a Qdrant collection with a named vector field for embeddings.
-    """
+    """ Creates a Qdrant collection with a named vector field for embeddings. """
     try:
         client.recreate_collection(
             collection_name=COLLECTION_NAME,
@@ -32,11 +30,7 @@ def create_collection():
         logging.error(f"❌ Error creating collection: {e}")
 
 def insert_vectors(df):
-    """
-    Inserts batch of article embeddings into Qdrant.
-    Args:
-        df (pd.DataFrame): DataFrame containing articles & embeddings.
-    """
+    """ Inserts batch of article embeddings into Qdrant. """
     if df is None or "embedding" not in df.columns:
         logging.error("❌ Error: DataFrame is None or missing 'embedding' column.")
         return
@@ -50,7 +44,7 @@ def insert_vectors(df):
             points.append(
                 PointStruct(
                     id=vector_id,
-                    vector={"embedding": embedding},
+                    vector={"embedding": embedding},  # ✅ Fixed: Added named vector
                     payload={"an": row.get("an", "Unknown"), "content_text": row["full_text"]}
                 )
             )
