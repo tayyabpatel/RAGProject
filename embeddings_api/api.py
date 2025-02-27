@@ -20,6 +20,9 @@ class QueryRequest(BaseModel):
 async def embed_query(request: QueryRequest):
     """ Generates an embedding for a search query (dummy embeddings) """
     try:
+        if not request.query.strip():  # Reject empty or whitespace-only queries
+            raise HTTPException(status_code=400, detail="Query text cannot be empty.")
+
         embedding = generate_query_embedding(request.query)
         return {"embedding": embedding}
     except Exception as e:
@@ -29,6 +32,9 @@ async def embed_query(request: QueryRequest):
 async def embed_text(request: QueryRequest):
     """ Generates an embedding for full articles (dummy embeddings) """
     try:
+        if not request.query.strip():  # Reject empty or whitespace-only queries
+            raise HTTPException(status_code=400, detail="Query text cannot be empty.")
+
         embedding = generate_article_embeddings(pd.DataFrame([{"full_text": request.query}]))
         return {"embedding": embedding["embedding"].tolist()[0]}
     except Exception as e:
