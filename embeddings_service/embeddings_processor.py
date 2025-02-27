@@ -46,7 +46,7 @@ def process_and_store_embeddings(avro_file_path):
     # Preprocess articles
     df = preprocess_dataframe(df)
 
-    # Generate embeddings
+    # Generate embeddings (using dummy embeddings)
     df = generate_article_embeddings(df)
 
     if "embedding" not in df.columns:

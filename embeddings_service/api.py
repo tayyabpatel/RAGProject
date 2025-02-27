@@ -18,7 +18,7 @@ class QueryRequest(BaseModel):
 
 @app.post("/embed_query/")
 async def embed_query(request: QueryRequest):
-    """ Generates an embedding for a search query """
+    """ Generates an embedding for a search query (dummy embeddings) """
     try:
         embedding = generate_query_embedding(request.query)
         return {"embedding": embedding}
@@ -27,7 +27,7 @@ async def embed_query(request: QueryRequest):
 
 @app.post("/embed_text/")
 async def embed_text(request: QueryRequest):
-    """ Generates an embedding for full articles """
+    """ Generates an embedding for full articles (dummy embeddings) """
     try:
         embedding = generate_article_embeddings(pd.DataFrame([{"full_text": request.query}]))
         return {"embedding": embedding["embedding"].tolist()[0]}
