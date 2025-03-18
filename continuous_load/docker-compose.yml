@@ -1,0 +1,10 @@
+services:
+  streaming_service:
+    build: .
+    container_name: streaming_module
+    restart: always
+    environment:
+      - CONFIG_PATH=/app/config.json
+    volumes:
+      - .:/app
+    command: ["python", "main.py"]

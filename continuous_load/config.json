@@ -1,0 +1,6 @@
+{
+    "stream_url": "wss://streaming.example.com",
+    "auth_token": "your-auth-token",
+    "log_file": "streaming.log"
+  }
+  
