@@ -1,6 +1,8 @@
 {
-    "stream_url": "wss://streaming.example.com",
+    "stream_url": "https://api.factiva.com/stream",
     "auth_token": "your-auth-token",
-    "log_file": "streaming.log"
+    "log_file": "streaming.log",
+    "polling_interval": 5,
+    "process_avro_api": "http://process-avro-module:8000/process_article/"
   }
   
