@@ -1,0 +1,9 @@
+{
+  "stream_url": "https://api.dowjones.com/streams/v2/subscriptions/dj-synhub-stream-lufcwmlbrmmpg1p1kmq9c1ex8blcnqdu-hmpihywjdd-filtered-7cAlyX",
+  "auth_token": "LuFCwMlbrmMpg1p1kmq9C1Ex8BLCnQdu",
+  "log_file": "streaming.log",
+  "polling_interval": 10,
+  "process_avro_api": "http://process-avro-module:8000/process_article/"
+}
+
+

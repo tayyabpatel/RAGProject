@@ -1,18 +1,16 @@
-# Use official Python image as base
+# Use Python 3.9 as base image
 FROM python:3.9
 
-# Set working directory
+# Set working directory inside the container
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Copy requirements file and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the app code
+# Copy all module files into the container
 COPY . .
 
-# Set environment variables (modify as needed)
-ENV CONFIG_PATH="/app/config.json"
-
-# Run the streaming listener
+# Command to run when the container starts
 CMD ["python", "main.py"]
+
