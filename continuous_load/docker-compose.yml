@@ -1,10 +1,15 @@
 services:
-  streaming_service:
+  streaming_module:
     build: .
     container_name: streaming_module
     restart: always
-    environment:
-      - CONFIG_PATH=/app/config.json
     volumes:
       - .:/app
+    environment:
+      USER_KEY: "LuFCwMlbrmMpg1p1kmq9C1Ex8BLCnQdu"
+      SUBSCRIPTION_ID: "dj-synhub-stream-lufcwmlbrmmpg1p1kmq9c1ex8blcnqdu-hmpihywjdd-filtered-7cAlyX"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
     command: ["python", "main.py"]
